@@ -3,5 +3,5 @@
 version = 3
 
 [[package]]
-name = "pac-helper"
+name = "pac_helper"
 version = "0.1.0"
