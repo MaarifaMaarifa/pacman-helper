@@ -1,15 +1,14 @@
-pub mod arch_packages {
+pub mod arch_package {
 
     use std::fs;
 
-    #[derive(PartialEq, Eq)]
+    #[derive(PartialEq, Eq, Clone)]
     pub struct Package {
         pub name: String,
         pub version: String,
         pub description: String,
         pub dependencies: Vec<String>,
         size: String,
-        //pub is_initialized: bool,
     }
 
     impl Package {
@@ -19,18 +18,15 @@ pub mod arch_packages {
                 version: String::new(),
                 description: String::new(),
                 dependencies: Vec::new(),
-                size: String::new(), //is_initialized: false,
+                size: String::new(), 
             }
         }
 
-        pub fn init(&mut self, path: String) {
-            //self.is_initialized = true;
+        pub fn init(&mut self, path: String) -> Result<(), &str> {
 
             let database_contents = match fs::read_to_string(path) {
                 Ok(contents) => contents,
-                Err(_) => {
-                    panic!("Failed to get the database path");
-                }
+                Err(_) => return Err("Failed to read the package database"),
             };
 
             let mut take_name = false;
@@ -85,12 +81,21 @@ pub mod arch_packages {
 
                 if take_dependancies {
                     if !line.trim().is_empty() {
-                        self.dependencies.push(line.to_owned())
+
+                        // Removing the dependency version from the dependency string if it has one
+                        let mut char_index = line.len();    // Initialize the character index to slice at, the char being ">" indicating version
+
+                        if let Some(pos) = line.as_bytes().iter().position(|x| *x == b'>') {
+                            char_index = pos;
+                        }
+
+                        self.dependencies.push(line[0..char_index].to_owned())
                     } else {
                         take_dependancies = false;
                     }
                 }
             }
+            Ok(())
         }
     }
 
@@ -112,43 +117,14 @@ pub mod arch_packages {
             Ok(size_in_mb / 1_000_000 as f32)
         }
 
-        pub fn has_dependancy(&self, dependency: &str) -> bool {
+        pub fn has_dependency(&self, dependency: &str) -> bool {
             self.dependencies.contains(&dependency.to_owned())
-        }
-    }
-
-    pub struct Dependency<'a> {
-        name: String,
-        packages_depending: Vec<&'a Package>,
-    }
-
-    impl<'a> Dependency<'a> {
-        pub fn new(name: String) -> Dependency<'a> {
-            Dependency {
-                name,
-                packages_depending: Vec::new(),
-            }
-        }
-
-        pub fn can_be_removed_with(&self, package: &Package) -> bool {
-            if self.packages_depending.contains(&package) && package.dependency_count() == 1 {
-                return true;
-            }
-            return false;
-        }
-
-        pub fn add_package(&mut self, package: &'a Package) {
-            self.packages_depending.push(package);
-        }
-
-        pub fn packages_depending_count(&self) -> usize {
-            self.packages_depending.len()
         }
     }
 }
 
 pub mod package_database_reader {
-    use super::arch_packages::Package;
+    use super::arch_package::Package;
     use std::error::Error;
     use std::fs;
     use std::path::Path;
@@ -171,12 +147,90 @@ pub mod package_database_reader {
         for file in folders {
             if Path::new(&file).exists() {
                 let mut package = Package::new();
-                package.init(file);
+                package.init(file)?;
 
                 packages.push(package);
             }
         }
 
         Ok(packages)
+    }
+}
+
+pub mod option_functions {
+    use super::arch_package::Package;
+    use std::collections::HashSet;
+
+    pub fn get_packages_with_same_dependencies<'a>(package_name: &str, packages: &'a Vec<Package>) -> Option<HashSet<&'a str>> {
+        let mut package_dependencies: &Vec<String> = &Vec::new();
+        let mut packages_with_same_dependencies: HashSet<&str> = HashSet::new();
+        let mut other_packages_found = false;
+
+        // Getting the package dependencies
+        for package in packages {
+            if package.name == package_name {
+                package_dependencies = &package.dependencies;
+                break;
+            }
+        }
+
+        // Getting the packages with similar dependencies
+        for package in packages {
+            if package.name == package_name {
+                continue;
+            }
+
+            for dep in &package.dependencies {
+                if package_dependencies.contains(&dep) {
+                    packages_with_same_dependencies.insert(&package.name);
+                    other_packages_found = true;
+                }
+            }
+        }
+        
+        // Returning the appropriate data
+        if other_packages_found {
+            Some(packages_with_same_dependencies)
+        } else {
+            None
+        }
+    }
+
+    
+    pub fn get_unique_dependencies<'a>(package_name: &str, packages: &'a Vec<Package>) -> Option<Vec<String>> {
+        let mut package_dependencies: &Vec<String> = &Vec::new();
+        let mut unique_dependencies_found = false;
+
+        // Getting the package dependencies
+        for package in packages {
+            if package.name == package_name {
+                package_dependencies = &package.dependencies;
+                break;
+            }
+        }
+
+        let mut packages_dependencies_copy = package_dependencies.clone();
+
+        // Removing shared dependencies
+        for package in packages {
+            if package.name == package_name {
+                continue;
+            }
+
+            for dep in &package.dependencies {
+                if package_dependencies.contains(&dep) {
+                    if let Some(pos) = packages_dependencies_copy.iter().position( |x| x == dep ) {
+                        packages_dependencies_copy.remove(pos);
+                    }
+                    unique_dependencies_found = true;
+                }
+            }
+        }
+
+        if unique_dependencies_found && packages_dependencies_copy.len() > 0{
+            Some(packages_dependencies_copy)
+        } else {
+            None
+        }
     }
 }

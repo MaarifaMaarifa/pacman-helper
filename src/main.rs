@@ -1,5 +1,5 @@
-use pac_helper::arch_packages::{Package, Dependency};
 use pac_helper::package_database_reader::packages_reader;
+use pac_helper::option_functions::get_unique_dependencies;
 
 use std::process;
 
@@ -12,9 +12,19 @@ fn main() {
         }
     };
 
-    for package in &packages {
-        println!("{}", package.name);
-    }
+    
+    // for package in &packages {
+    //     match get_unique_dependencies(&package.name, &packages) {
+    //         Some(_) => continue,
+    //         None => println!("{}", package.name)
+    //     }
+    // }
 
-    println!("Total packages installed = {}", packages.len());
+    let pacs = get_unique_dependencies("libreoffice-still", &packages).unwrap();
+
+    for pac in &pacs {
+        println!("{}", pac);
+    }
+    println!("{}",pacs.len())
+    
 }
