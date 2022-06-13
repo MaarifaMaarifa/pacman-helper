@@ -1,6 +1,7 @@
+use pac_helper::commandline::run;
 use pac_helper::package_database_reader::packages_reader;
-use pac_helper::option_functions::get_unique_dependencies;
 
+use std::env;
 use std::process;
 
 fn main() {
@@ -12,19 +13,10 @@ fn main() {
         }
     };
 
-    
-    // for package in &packages {
-    //     match get_unique_dependencies(&package.name, &packages) {
-    //         Some(_) => continue,
-    //         None => println!("{}", package.name)
-    //     }
-    // }
+    let args: Vec<String> = env::args().into_iter().collect();
 
-    let pacs = get_unique_dependencies("libreoffice-still", &packages).unwrap();
-
-    for pac in &pacs {
-        println!("{}", pac);
+    if let Err(err) = run(args, &packages) {
+        eprintln!("Error: {}", err);
+        process::exit(1);
     }
-    println!("{}",pacs.len())
-    
 }
