@@ -1,5 +1,11 @@
 [package]
-name = "pac_helper"
+name = "pacman-helper"
+description = "A program for more options for package management in Arch systems"
+authors = ["Maarifa Maarifa <maarifamaarfifa20@gmail.com>"]
+categories = ["command-line-utilities"]
+rust-version = "1.61.0"
+license = "MIT"
+repository = "https://github.com/pacman-helper"
 version = "0.1.0"
 edition = "2021"
 

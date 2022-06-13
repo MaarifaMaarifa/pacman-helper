@@ -1,5 +1,5 @@
-use pac_helper::commandline::run;
-use pac_helper::package_database_reader::packages_reader;
+use pacman_helper::commandline::run;
+use pacman_helper::package_database_reader::packages_reader;
 
 use std::env;
 use std::process;
