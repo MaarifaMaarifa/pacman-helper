@@ -6,8 +6,7 @@ Holding back packages in arch is one of the things that users do in their system
 This can be due to stability issues, especially when a new package release becomes buggy.  
 
 **pacman-helper** provides more options for this kind of scenario, in which you want to pause a package update and also it's dependencies without affecting other programs.  
-This is done by checking package's unique dependancies, and printing them out to the console, there after the user can know which dependencies to hold back without breaking  
-the system.
+This is done by checking package's unique dependancies, and printing them out to the console, there after the user can know which dependencies to hold back without breaking their system.
 
 ## usage
 ### **Getting unique dependencies**
