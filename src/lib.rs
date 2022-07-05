@@ -29,8 +29,8 @@ pub mod arch_package {
 
             let mut take_name = false;
             let mut take_version = false;
-            let mut take_discription = false;
-            let mut take_dependancies = false;
+            let mut take_description = false;
+            let mut take_dependencies = false;
 
             for line in database_contents.lines() {
                 if line.contains("%NAME%") {
@@ -42,11 +42,11 @@ pub mod arch_package {
                     continue;
                 }
                 if line.contains("%DESC%") {
-                    take_discription = true;
+                    take_description = true;
                     continue;
                 }
                 if line.contains("%DEPENDS") {
-                    take_dependancies = true;
+                    take_dependencies = true;
                     continue;
                 }
 
@@ -60,29 +60,27 @@ pub mod arch_package {
                     take_version = false;
                 }
 
-                if take_discription {
+                if take_description {
                     if line != "\n" {
                         self.description.push_str(line)
                     }
-                    take_discription = false
+                    take_description = false
                 }
 
-                if take_dependancies {
+                if take_dependencies {
                     if !line.trim().is_empty() {
                         // Removing the dependency version from the dependency string if it has one
                         let mut char_index = line.len(); // Initialize the character index to slice at, the char being ">" indicating version
 
                         if let Some(pos) = line.as_bytes().iter().position(|x| *x == b'>') {
                             char_index = pos;
-                        } else {
-                            if let Some(pos) = line.as_bytes().iter().position(|x| *x == b'=') {
-                                char_index = pos;
-                            }
+                        } else if let Some(pos) = line.as_bytes().iter().position(|x| *x == b'=') {
+                            char_index = pos;
                         }
 
                         self.dependencies.push(line[0..char_index].to_owned())
                     } else {
-                        take_dependancies = false;
+                        take_dependencies = false;
                     }
                 }
             }
@@ -171,9 +169,9 @@ pub mod option_functions {
     }
 
     // A function to get unique dependencies of a package
-    pub fn get_unique_dependencies<'a>(
+    pub fn get_unique_dependencies(
         package_name: &str,
-        packages: &'a Vec<Package>,
+        packages: &Vec<Package>,
     ) -> Option<Vec<String>> {
         let mut package_dependencies: &Vec<String> = &Vec::new();
         let mut unique_dependencies_found = false;
