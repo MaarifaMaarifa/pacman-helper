@@ -1,22 +1,18 @@
-use pacman_helper::commandline::run;
-use pacman_helper::package_database_reader::packages_reader;
+mod args;
 
-use std::env;
-use std::process;
+use args::*;
+use clap::Parser;
+use pacman_helper::commandline_functions::*;
 
 fn main() {
-    let packages = match packages_reader("/var/lib/pacman/local/") {
-        Ok(packages) => packages,
-        Err(err) => {
-            eprintln!("Error: {}", err);
-            process::exit(1);
+    let args = args::Cli::parse();
+
+    match args.command {
+        Commands::GetUniqueDeps(unique_deps) => {
+            get_unique_dependencies(&unique_deps.package);
         }
-    };
-
-    let args: Vec<String> = env::args().into_iter().collect();
-
-    if let Err(err) = run(args, &packages) {
-        eprintln!("Error: {}", err);
-        process::exit(1);
+        Commands::GetPacsWithSameDeps(pacs_with_same_deps) => {
+            get_packages_with_same_dependencies(&pacs_with_same_deps.package);
+        }
     }
 }

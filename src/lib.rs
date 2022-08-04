@@ -126,21 +126,36 @@ pub mod package_database_reader {
 }
 
 //Module associated with functions that get called when passing different command line options
-pub mod option_functions {
+pub mod commandline_functions {
     use super::arch_package::Package;
+    use crate::package_database_reader::packages_reader;
     use std::collections::HashSet;
+    use std::process;
+
+    const DEFAULT_DATABASE_PATH: &str = "/var/lib/pacman/local/";
+
+    // A function to populate all the packages installed in the system
+    fn populate_packages() -> Vec<Package> {
+        let packages = match packages_reader(DEFAULT_DATABASE_PATH) {
+            Ok(packages) => packages,
+            Err(err) => {
+                eprintln!("Error: {}", err);
+                process::exit(1);
+            }
+        };
+        packages
+    }
 
     // A function to get packages that share the same dependencies with the package name passed
-    pub fn get_packages_with_same_dependencies<'a>(
-        package_name: &str,
-        packages: &'a Vec<Package>,
-    ) -> Option<HashSet<&'a str>> {
+    pub fn get_packages_with_same_dependencies(package_name: &str) {
         let mut package_dependencies: &Vec<String> = &Vec::new();
         let mut packages_with_same_dependencies: HashSet<&str> = HashSet::new();
         let mut other_packages_found = false;
 
+        let packages = populate_packages();
+
         // Getting the package dependencies
-        for package in packages {
+        for package in &packages {
             if package.name == package_name {
                 package_dependencies = &package.dependencies;
                 break;
@@ -148,7 +163,7 @@ pub mod option_functions {
         }
 
         // Getting the packages with similar dependencies
-        for package in packages {
+        for package in &packages {
             if package.name == package_name {
                 continue;
             }
@@ -162,22 +177,21 @@ pub mod option_functions {
         }
 
         if other_packages_found {
-            Some(packages_with_same_dependencies)
-        } else {
-            None
+            for package in packages_with_same_dependencies {
+                println!("{package}");
+            }
         }
     }
 
     // A function to get unique dependencies of a package
-    pub fn get_unique_dependencies(
-        package_name: &str,
-        packages: &Vec<Package>,
-    ) -> Option<Vec<String>> {
+    pub fn get_unique_dependencies(package_name: &str) {
         let mut package_dependencies: &Vec<String> = &Vec::new();
         let mut unique_dependencies_found = false;
 
+        let packages = populate_packages();
+
         // Getting the package dependencies
-        for package in packages {
+        for package in &packages {
             if package.name == package_name {
                 package_dependencies = &package.dependencies;
                 break;
@@ -187,7 +201,7 @@ pub mod option_functions {
         let mut packages_dependencies_copy = package_dependencies.clone();
 
         // Removing shared dependencies from the cloned dependencies vector
-        for package in packages {
+        for package in &packages {
             if package.name == package_name {
                 continue;
             }
@@ -203,57 +217,9 @@ pub mod option_functions {
         }
 
         if unique_dependencies_found && packages_dependencies_copy.len() > 0 {
-            Some(packages_dependencies_copy)
-        } else {
-            None
-        }
-    }
-}
-
-// A module for handling commandline options
-pub mod commandline {
-    use super::arch_package::Package;
-    use super::option_functions::*;
-
-    use std::process;
-
-    pub fn run(args: Vec<String>, packages: &Vec<Package>) -> Result<(), &'static str> {
-        let commandline_options = ["--get-unique-deps", "--get-pacs-with-same-deps"];
-
-        if args.len() != 3 {
-            return Err("Error: Invalid number of arguments, 2 arguments required");
-        }
-
-        if !commandline_options.contains(&args[1].as_ref()) {
-            eprintln!("Error, Invalid option {}", args[1]);
-            process::exit(1);
-        }
-
-        let option = &args[1];
-        let package = &args[2];
-
-        if option == "--get-unique-deps" {
-            match get_unique_dependencies(package, packages) {
-                Some(vec) => {
-                    for item in vec {
-                        println!("{}", item)
-                    }
-                }
-                None => return Err("No unique dependencies found"),
+            for package in packages_dependencies_copy {
+                println!("{package}");
             }
         }
-
-        if option == "--get-pacs-with-same-deps" {
-            match get_packages_with_same_dependencies(package, packages) {
-                Some(vec) => {
-                    for item in vec {
-                        println!("{}", item);
-                    }
-                }
-                None => return Err("No packages with same dependencies found"),
-            }
-        }
-
-        Ok(())
     }
 }
