@@ -8,6 +8,7 @@ pub mod arch_package {
         pub version: String,
         pub description: String,
         pub dependencies: Vec<String>,
+        pub size: String,
     }
 
     impl Package {
@@ -17,6 +18,7 @@ pub mod arch_package {
                 version: String::new(),
                 description: String::new(),
                 dependencies: Vec::new(),
+                size: String::new(),
             }
         }
 
@@ -31,6 +33,7 @@ pub mod arch_package {
             let mut take_version = false;
             let mut take_description = false;
             let mut take_dependencies = false;
+            let mut take_size = false;
 
             for line in database_contents.lines() {
                 if line.contains("%NAME%") {
@@ -49,6 +52,10 @@ pub mod arch_package {
                     take_dependencies = true;
                     continue;
                 }
+                if line.contains("%SIZE") {
+                    take_size = true;
+                    continue;
+                }
 
                 if take_name {
                     self.name = line.to_owned();
@@ -58,6 +65,11 @@ pub mod arch_package {
                 if take_version {
                     self.version = line.to_owned();
                     take_version = false;
+                }
+
+                if take_size {
+                    self.size = line.to_owned();
+                    take_size = false;
                 }
 
                 if take_description {
