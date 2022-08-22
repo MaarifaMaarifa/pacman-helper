@@ -1,102 +1,70 @@
 pub mod arch_package {
 
-    use std::fs;
-
     // Custom type for an arch package
     pub struct Package {
         pub name: String,
-        pub version: String,
-        pub description: String,
-        pub dependencies: Vec<String>,
         pub size: String,
+        pub dependencies: Vec<String>,
+        pub opt_dependencies: Vec<String>,
     }
 
     impl Package {
-        pub fn new() -> Package {
-            Package {
+        pub fn new(database_content: String) -> Self {
+            let mut package = Package {
                 name: String::new(),
-                version: String::new(),
-                description: String::new(),
-                dependencies: Vec::new(),
                 size: String::new(),
-            }
-        }
+                dependencies: Vec::new(),
+                opt_dependencies: Vec::new(),
 
-        // Method to populate package fields, by reading their respective local databases
-        pub fn init(&mut self, path: String) -> Result<(), &str> {
-            let database_contents = match fs::read_to_string(path) {
-                Ok(contents) => contents,
-                Err(_) => return Err("Failed to read the package database"),
             };
 
-            let mut take_name = false;
-            let mut take_version = false;
-            let mut take_description = false;
-            let mut take_dependencies = false;
-            let mut take_size = false;
+            let mut lines_iter = database_content.lines();
 
-            for line in database_contents.lines() {
-                if line.contains("%NAME%") {
-                    take_name = true;
-                    continue;
-                }
-                if line.contains("%VERSION%") {
-                    take_version = true;
-                    continue;
-                }
-                if line.contains("%DESC%") {
-                    take_description = true;
-                    continue;
-                }
-                if line.contains("%DEPENDS") {
-                    take_dependencies = true;
-                    continue;
-                }
-                if line.contains("%SIZE") {
-                    take_size = true;
-                    continue;
-                }
+            while let Some(current_line) = lines_iter.next() {
+                let current_line = current_line.trim();
 
-                if take_name {
-                    self.name = line.to_owned();
-                    take_name = false;
-                }
-
-                if take_version {
-                    self.version = line.to_owned();
-                    take_version = false;
-                }
-
-                if take_size {
-                    self.size = line.to_owned();
-                    take_size = false;
-                }
-
-                if take_description {
-                    if line != "\n" {
-                        self.description.push_str(line)
+                if current_line == "%NAME%" {
+                    if let Some(name) = lines_iter.next() {
+                        package.name.push_str(name);
                     }
-                    take_description = false
                 }
 
-                if take_dependencies {
-                    if !line.trim().is_empty() {
-                        // Removing the dependency version from the dependency string if it has one
-                        let mut char_index = line.len(); // Initialize the character index to slice at, the char being ">" indicating version
+                if current_line == "%SIZE%" {
+                    if let Some(size) = lines_iter.next() {
+                        package.size.push_str(size);
+                    }
+                }
 
-                        if let Some(pos) = line.as_bytes().iter().position(|x| *x == b'>') {
-                            char_index = pos;
-                        } else if let Some(pos) = line.as_bytes().iter().position(|x| *x == b'=') {
-                            char_index = pos;
+                if current_line == "%DEPENDS%" {
+                    while let Some(dependency) = lines_iter.next() {
+                        let dependency = dependency.trim();
+
+                        if dependency.is_empty() {
+                            break;
+                        } else {
+                            package.dependencies.push(dependency.to_string());
                         }
-
-                        self.dependencies.push(line[0..char_index].to_owned())
-                    } else {
-                        take_dependencies = false;
                     }
                 }
-            }
-            Ok(())
+
+                if current_line == "%OPTDEPENDS%" {
+                    while let Some(dependency) = lines_iter.next() {
+                        let dependency = dependency.trim();
+
+                        if dependency.is_empty() {
+                            break;
+                        } else if let Some(colon_index) = dependency.find(':') {       /* Getting rid of optional package description */
+                            let dependency = &dependency[..colon_index];
+                            package.opt_dependencies.push(dependency.to_string());
+                        } else {
+                            package.opt_dependencies.push(dependency.to_string());
+                        }
+                    }
+                }
+
+            };
+
+            package
         }
     }
 }
@@ -126,9 +94,8 @@ pub mod package_database_reader {
 
         for file in folders {
             if Path::new(&file).exists() {
-                let mut package = Package::new();
-                package.init(file)?;
-
+                let content = fs::read_to_string(file)?;
+                let package = Package::new(content);
                 packages.push(package);
             }
         }
