@@ -148,7 +148,7 @@ pub mod commandline_functions {
             }
 
             for dep in &package.dependencies {
-                if package_dependencies.contains(&dep) {
+                if package_dependencies.contains(dep) {
                     packages_with_same_dependencies.insert(&package.name);
                     other_packages_found = true;
                 }
@@ -186,7 +186,7 @@ pub mod commandline_functions {
             }
 
             for dep in &package.dependencies {
-                if package_dependencies.contains(&dep) {
+                if package_dependencies.contains(dep) {
                     if let Some(pos) = packages_dependencies_copy.iter().position(|x| x == dep) {
                         packages_dependencies_copy.remove(pos);
                     }
@@ -195,7 +195,7 @@ pub mod commandline_functions {
             }
         }
 
-        if unique_dependencies_found && packages_dependencies_copy.len() > 0 {
+        if unique_dependencies_found && !packages_dependencies_copy.is_empty() {
             for package in packages_dependencies_copy {
                 println!("{package}");
             }
