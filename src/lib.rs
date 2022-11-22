@@ -41,7 +41,8 @@ pub mod arch_package {
 
                         if dependency.is_empty() {
                             break;
-                        } else if let Some(colon_index) = dependency.find(':') {       /* Getting rid of optional package description */
+                        } else if let Some(colon_index) = dependency.find(':') {
+                            /* Getting rid of optional package description */
                             let dependency = &dependency[..colon_index];
                             package.opt_dependencies.push(dependency.to_string());
                         } else {
@@ -49,8 +50,7 @@ pub mod arch_package {
                         }
                     }
                 }
-
-            };
+            }
 
             package
         }
@@ -102,7 +102,7 @@ pub mod commandline_functions {
     const DEFAULT_DATABASE_PATH: &str = "/var/lib/pacman/local/";
 
     // A function to populate all the packages installed in the system
-    fn populate_packages() -> Vec<Package> {
+    pub fn populate_packages() -> Vec<Package> {
         let packages = match packages_reader(DEFAULT_DATABASE_PATH) {
             Ok(packages) => packages,
             Err(err) => {
@@ -114,15 +114,16 @@ pub mod commandline_functions {
     }
 
     // A function to get packages that share the same dependencies with the package name passed
-    pub fn get_packages_with_same_dependencies(package_name: &str) {
+    pub fn get_packages_with_same_dependencies<'a>(
+        package_name: &str,
+        packages: &'a Vec<Package>,
+    ) -> Option<HashSet<&'a str>> {
         let mut package_dependencies: &Vec<String> = &Vec::new();
         let mut packages_with_same_dependencies: HashSet<&str> = HashSet::new();
         let mut other_packages_found = false;
 
-        let packages = populate_packages();
-
         // Getting the package dependencies
-        for package in &packages {
+        for package in packages {
             if package.name == package_name {
                 package_dependencies = &package.dependencies;
                 break;
@@ -130,7 +131,7 @@ pub mod commandline_functions {
         }
 
         // Getting the packages with similar dependencies
-        for package in &packages {
+        for package in packages {
             if package.name == package_name {
                 continue;
             }
@@ -144,18 +145,19 @@ pub mod commandline_functions {
         }
 
         if other_packages_found {
-            for package in packages_with_same_dependencies {
-                println!("{package}");
-            }
+            return Some(packages_with_same_dependencies);
         }
+
+        None
     }
 
     // A function to get unique dependencies of a package
-    pub fn get_unique_dependencies(package_name: &str) {
+    pub fn get_unique_dependencies(
+        package_name: &str,
+        packages: Vec<Package>,
+    ) -> Option<Vec<String>> {
         let mut package_dependencies: &Vec<String> = &Vec::new();
         let mut unique_dependencies_found = false;
-
-        let packages = populate_packages();
 
         // Getting the package dependencies
         for package in &packages {
@@ -184,9 +186,100 @@ pub mod commandline_functions {
         }
 
         if unique_dependencies_found && !packages_dependencies_copy.is_empty() {
-            for package in packages_dependencies_copy {
-                println!("{package}");
-            }
+            return Some(packages_dependencies_copy);
         }
+
+        None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashSet;
+
+    use super::arch_package::Package;
+    use super::commandline_functions::{
+        get_packages_with_same_dependencies, get_unique_dependencies,
+    };
+
+    /// A test for creating a package instance with it's fields
+    #[test]
+    fn package_creation_test() {
+        let package_database = "
+%NAME%
+linux-kernel
+
+%DEPENDS%
+coreutils
+kmod
+initramfs
+
+%OPTDEPENDS%
+wireless-regdb: to set the correct wireless channels of your country
+linux-firmware: firmware images needed for some devices
+";
+
+        let package = Package::new(package_database.to_string());
+
+        assert_eq!(package.name, "linux-kernel");
+        assert_eq!(package.dependencies, vec!["coreutils", "kmod", "initramfs"]);
+        assert_eq!(
+            package.opt_dependencies,
+            vec!["wireless-regdb", "linux-firmware"]
+        );
+    }
+
+    fn get_packages() -> Vec<Package> {
+        vec![
+            Package {
+                name: String::from("a"),
+                dependencies: vec![
+                    String::from("bottle"),
+                    String::from("cup"),
+                    String::from("plate"),
+                ],
+                opt_dependencies: vec![],
+            },
+            Package {
+                name: String::from("b"),
+                dependencies: vec![
+                    String::from("bulb"),
+                    String::from("wire"),
+                    String::from("plate"),
+                ],
+                opt_dependencies: vec![],
+            },
+            Package {
+                name: String::from("c"),
+                dependencies: vec![
+                    String::from("pluto"),
+                    String::from("mars"),
+                    String::from("cup"),
+                ],
+                opt_dependencies: vec![],
+            },
+        ]
+    }
+
+    /// A test for getting unique dependencies of a package out of others
+    #[test]
+    fn fetching_unique_dependencies_test() {
+        assert_eq!(
+            get_unique_dependencies("a", get_packages()),
+            Some(vec!["bottle".to_owned()])
+        );
+    }
+
+    /// A test for getting packages that share the same dependencies with the given package
+    #[test]
+    fn fetching_packages_with_same_deps_test() {
+        let mut packages_with_same_deps = HashSet::new();
+        packages_with_same_deps.insert("b");
+        packages_with_same_deps.insert("c");
+
+        assert_eq!(
+            get_packages_with_same_dependencies("a", &get_packages()),
+            Some(packages_with_same_deps)
+        )
     }
 }
