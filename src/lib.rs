@@ -4,7 +4,6 @@ pub mod arch_package {
     #[derive(Default)]
     pub struct Package {
         pub name: String,
-        pub size: String,
         pub dependencies: Vec<String>,
         pub opt_dependencies: Vec<String>,
     }
@@ -21,12 +20,6 @@ pub mod arch_package {
                 if current_line == "%NAME%" {
                     if let Some(name) = lines_iter.next() {
                         package.name.push_str(name);
-                    }
-                }
-
-                if current_line == "%SIZE%" {
-                    if let Some(size) = lines_iter.next() {
-                        package.size.push_str(size);
                     }
                 }
 
