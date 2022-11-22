@@ -1,6 +1,7 @@
 pub mod arch_package {
 
     // Custom type for an arch package
+    #[derive(Default)]
     pub struct Package {
         pub name: String,
         pub size: String,
@@ -10,13 +11,7 @@ pub mod arch_package {
 
     impl Package {
         pub fn new(database_content: String) -> Self {
-            let mut package = Package {
-                name: String::new(),
-                size: String::new(),
-                dependencies: Vec::new(),
-                opt_dependencies: Vec::new(),
-
-            };
+            let mut package = Package::default();
 
             let mut lines_iter = database_content.lines();
 
