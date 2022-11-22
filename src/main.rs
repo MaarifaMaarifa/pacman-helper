@@ -1,5 +1,7 @@
 mod args;
 
+use std::process;
+
 use args::*;
 use clap::Parser;
 use pacman_helper::commandline_functions::*;
@@ -16,6 +18,9 @@ fn main() {
                 for dep in unique_deps {
                     println!("{}", dep)
                 }
+            } else {
+                eprintln!("No unique dependencies found for package '{}'", &unique_deps.package);
+                process::exit(1);
             }
         }
         Commands::GetPacsWithSameDeps(pacs_with_same_deps) => {
@@ -25,6 +30,9 @@ fn main() {
                 for package in packages {
                     println!("{}", package)
                 }
+            } else {
+                eprintln!("No packages with same dependencies found for package '{}'", pacs_with_same_deps.package);
+                process::exit(1);
             }
         }
     }
