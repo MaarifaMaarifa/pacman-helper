@@ -15,4 +15,4 @@ strip = true
 codegen-units = 1
 
 [dependencies]
-clap = { version = "3.2.16", features = ["derive"] }
+clap = { version = "4", features = ["derive"] }
