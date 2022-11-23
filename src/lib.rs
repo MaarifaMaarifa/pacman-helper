@@ -1,4 +1,8 @@
 pub mod arch_package {
+    // Section names in arch package description
+    const NAME_SECTION: &str = "%NAME%";
+    const DEPENDENCIES_SECTION: &str = "%DEPENDS%";
+    const OPTIONAL_DEPENDENCIES_SECTION: &str = "%OPTDEPENDS%";
 
     // Custom type for an arch package
     #[derive(Default)]
@@ -17,14 +21,15 @@ pub mod arch_package {
             while let Some(current_line) = lines_iter.next() {
                 let current_line = current_line.trim();
 
-                if current_line == "%NAME%" {
+                if current_line == NAME_SECTION {
                     if let Some(name) = lines_iter.next() {
                         package.name.push_str(name);
+                        continue;
                     }
                 }
 
-                if current_line == "%DEPENDS%" {
-                    while let Some(dependency) = lines_iter.next() {
+                if current_line == DEPENDENCIES_SECTION {
+                    for dependency in lines_iter.by_ref() {
                         let dependency = dependency.trim();
 
                         if dependency.is_empty() {
@@ -33,10 +38,11 @@ pub mod arch_package {
                             package.dependencies.push(dependency.to_string());
                         }
                     }
+                    continue;
                 }
 
-                if current_line == "%OPTDEPENDS%" {
-                    while let Some(dependency) = lines_iter.next() {
+                if current_line == OPTIONAL_DEPENDENCIES_SECTION {
+                    for dependency in lines_iter.by_ref() {
                         let dependency = dependency.trim();
 
                         if dependency.is_empty() {
@@ -49,6 +55,7 @@ pub mod arch_package {
                             package.opt_dependencies.push(dependency.to_string());
                         }
                     }
+                    continue;
                 }
             }
 
@@ -120,15 +127,19 @@ pub mod commandline_functions {
     ) -> Option<HashSet<&'a str>> {
         let mut package_dependencies: &Vec<String> = &Vec::new();
         let mut packages_with_same_dependencies: HashSet<&str> = HashSet::new();
-        let mut other_packages_found = false;
 
         // Getting the package dependencies
-        for package in packages {
-            if package.name == package_name {
-                package_dependencies = &package.dependencies;
-                break;
-            }
+        if let Some(index) = packages
+            .iter()
+            .position(|package| package.name == package_name)
+        {
+            package_dependencies = &packages.get(index).unwrap().dependencies; // unwrap will never panic as it is guaranteed by the if statement
         }
+
+        // Not bothering if the package has no dependencies
+        if package_dependencies.is_empty() {
+            return None;
+        };
 
         // Getting the packages with similar dependencies
         for package in packages {
@@ -139,12 +150,11 @@ pub mod commandline_functions {
             for dep in &package.dependencies {
                 if package_dependencies.contains(dep) {
                     packages_with_same_dependencies.insert(&package.name);
-                    other_packages_found = true;
                 }
             }
         }
 
-        if other_packages_found {
+        if !packages_with_same_dependencies.is_empty() {
             return Some(packages_with_same_dependencies);
         }
 
@@ -152,33 +162,35 @@ pub mod commandline_functions {
     }
 
     // A function to get unique dependencies of a package
-    pub fn get_unique_dependencies(
+    pub fn get_unique_dependencies<'a>(
         package_name: &str,
-        packages: Vec<Package>,
-    ) -> Option<Vec<String>> {
-        let mut package_dependencies: &Vec<String> = &Vec::new();
+        packages: &'a Vec<Package>,
+    ) -> Option<Vec<&'a String>> {
+        let package_dependencies: &Vec<String>;
         let mut unique_dependencies_found = false;
 
         // Getting the package dependencies
-        for package in &packages {
-            if package.name == package_name {
-                package_dependencies = &package.dependencies;
-                break;
-            }
-        }
+        if let Some(index) = packages
+            .iter()
+            .position(|package| package.name == package_name)
+        {
+            package_dependencies = &packages.get(index).unwrap().dependencies; // unwrap will never panic as it is guaranteed by the if statement
+        } else {
+            return None;
+        };
 
-        let mut packages_dependencies_copy = package_dependencies.clone();
+        let mut packages_dependencies_copy: Vec<&String> = package_dependencies.iter().collect();
 
         // Removing shared dependencies from the cloned dependencies vector
-        for package in &packages {
+        for package in packages {
             if package.name == package_name {
                 continue;
             }
 
             for dep in &package.dependencies {
                 if package_dependencies.contains(dep) {
-                    if let Some(pos) = packages_dependencies_copy.iter().position(|x| x == dep) {
-                        packages_dependencies_copy.remove(pos);
+                    if let Some(pos) = packages_dependencies_copy.iter().position(|x| *x == dep) {
+                        packages_dependencies_copy.swap_remove(pos);
                     }
                     unique_dependencies_found = true;
                 }
@@ -235,6 +247,7 @@ linux-firmware: firmware images needed for some devices
                 name: String::from("a"),
                 dependencies: vec![
                     String::from("bottle"),
+                    String::from("spoon"),
                     String::from("cup"),
                     String::from("plate"),
                 ],
@@ -264,10 +277,19 @@ linux-firmware: firmware images needed for some devices
     /// A test for getting unique dependencies of a package out of others
     #[test]
     fn fetching_unique_dependencies_test() {
-        assert_eq!(
-            get_unique_dependencies("a", get_packages()),
-            Some(vec!["bottle".to_owned()])
-        );
+        let packages = get_packages();
+
+        let sample = ["bottle".to_owned(), "spoon".to_owned()];
+        let result = get_unique_dependencies("a", &packages).unwrap();
+
+        let sample_set: HashSet<_> = sample.iter().collect();
+        let mut result_set: HashSet<&String> = HashSet::new();
+
+        result.iter().for_each(|x| {_ = result_set.insert(x)});
+        
+        let result_length = sample_set.symmetric_difference(&result_set).into_iter().collect::<Vec<_>>().len();
+
+        assert_eq!(result_length, 0);
     }
 
     /// A test for getting packages that share the same dependencies with the given package

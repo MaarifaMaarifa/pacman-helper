@@ -14,7 +14,7 @@ fn main() {
 
     match args.command {
         Commands::GetUniqueDeps(unique_deps) => {
-            if let Some(unique_deps) = get_unique_dependencies(&unique_deps.package, packages) {
+            if let Some(unique_deps) = get_unique_dependencies(&unique_deps.package, &packages) {
                 for dep in unique_deps {
                     println!("{}", dep)
                 }
