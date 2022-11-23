@@ -1,16 +1,16 @@
 mod args;
 
 use std::process;
-
 use args::*;
-use clap::Parser;
 use pacman_helper::commandline_functions::*;
+use clap::Parser;
+use anyhow::Result;
 
-fn main() {
+fn main() -> Result<()> {
     let args = args::Cli::parse();
 
     // Populating system packages
-    let packages = populate_packages();
+    let packages = populate_packages()?;
 
     match args.command {
         Commands::GetUniqueDeps(unique_deps) => {
@@ -36,4 +36,6 @@ fn main() {
             }
         }
     }
+    
+    Ok(())
 }

@@ -67,12 +67,13 @@ pub mod arch_package {
 // Module associated with reading the local package databases
 pub mod package_database_reader {
     use super::arch_package::Package;
-    use std::error::Error;
     use std::fs;
     use std::path::Path;
 
+    use anyhow::Result;
+
     // Method to read the packages, returning a Vector of packages with their fields populated
-    pub fn packages_reader(databases_path: &str) -> Result<Vec<Package>, Box<dyn Error>> {
+    pub fn packages_reader(databases_path: &str) -> Result<Vec<Package>> {
         let paths = fs::read_dir(databases_path)?;
 
         let mut folders: Vec<String> = Vec::new();
@@ -104,20 +105,16 @@ pub mod commandline_functions {
     use super::arch_package::Package;
     use crate::package_database_reader::packages_reader;
     use std::collections::HashSet;
-    use std::process;
+
+    use anyhow::{Context, Result};
 
     const DEFAULT_DATABASE_PATH: &str = "/var/lib/pacman/local/";
 
     // A function to populate all the packages installed in the system
-    pub fn populate_packages() -> Vec<Package> {
-        let packages = match packages_reader(DEFAULT_DATABASE_PATH) {
-            Ok(packages) => packages,
-            Err(err) => {
-                eprintln!("Error: {}", err);
-                process::exit(1);
-            }
-        };
-        packages
+    pub fn populate_packages() -> Result<Vec<Package>> {
+        let packages =
+            packages_reader(DEFAULT_DATABASE_PATH).context("Failed to read packages database")?;
+        Ok(packages)
     }
 
     // A function to get packages that share the same dependencies with the package name passed
@@ -285,9 +282,13 @@ linux-firmware: firmware images needed for some devices
         let sample_set: HashSet<_> = sample.iter().collect();
         let mut result_set: HashSet<&String> = HashSet::new();
 
-        result.iter().for_each(|x| {_ = result_set.insert(x)});
-        
-        let result_length = sample_set.symmetric_difference(&result_set).into_iter().collect::<Vec<_>>().len();
+        result.iter().for_each(|x| _ = result_set.insert(x));
+
+        let result_length = sample_set
+            .symmetric_difference(&result_set)
+            .into_iter()
+            .collect::<Vec<_>>()
+            .len();
 
         assert_eq!(result_length, 0);
     }
