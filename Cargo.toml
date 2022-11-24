@@ -6,7 +6,7 @@ categories = ["command-line-utilities"]
 rust-version = "1.61.0"
 license = "MIT"
 repository = "https://github.com/pacman-helper"
-version = "0.1.2"
+version = "0.2.0"
 edition = "2021"
 
 [profile.release]
