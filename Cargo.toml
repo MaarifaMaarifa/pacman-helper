@@ -16,4 +16,5 @@ codegen-units = 1
 
 [dependencies]
 anyhow = "1"
+thiserror = "1"
 clap = { version = "4", features = ["derive"] }

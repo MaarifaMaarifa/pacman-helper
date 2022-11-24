@@ -106,7 +106,15 @@ pub mod commandline_functions {
     use crate::package_database_reader::packages_reader;
     use std::collections::HashSet;
 
-    use anyhow::{Context, Result};
+    use anyhow::{anyhow, Context, Result};
+    use thiserror::Error;
+    
+    #[derive(Error, Debug)]
+    enum PackagesRetrievalError {
+        #[error("package '{0}' could not be found")]
+        NotFound(String)
+        
+    }
 
     const DEFAULT_DATABASE_PATH: &str = "/var/lib/pacman/local/";
 
@@ -121,8 +129,8 @@ pub mod commandline_functions {
     pub fn get_packages_with_same_dependencies<'a>(
         package_name: &str,
         packages: &'a Vec<Package>,
-    ) -> Option<HashSet<&'a str>> {
-        let mut package_dependencies: &Vec<String> = &Vec::new();
+    ) -> Result<Option<HashSet<&'a str>>> {
+        let package_dependencies: &Vec<String>;
         let mut packages_with_same_dependencies: HashSet<&str> = HashSet::new();
 
         // Getting the package dependencies
@@ -131,11 +139,13 @@ pub mod commandline_functions {
             .position(|package| package.name == package_name)
         {
             package_dependencies = &packages.get(index).unwrap().dependencies; // unwrap will never panic as it is guaranteed by the if statement
+        } else {
+            return Err(anyhow!(PackagesRetrievalError::NotFound(package_name.to_owned())));
         }
 
         // Not bothering if the package has no dependencies
         if package_dependencies.is_empty() {
-            return None;
+            return Ok(None);
         };
 
         // Getting the packages with similar dependencies
@@ -152,17 +162,17 @@ pub mod commandline_functions {
         }
 
         if !packages_with_same_dependencies.is_empty() {
-            return Some(packages_with_same_dependencies);
+            return Ok(Some(packages_with_same_dependencies));
         }
 
-        None
+        Ok(None)
     }
 
     // A function to get unique dependencies of a package
     pub fn get_unique_dependencies<'a>(
         package_name: &str,
         packages: &'a Vec<Package>,
-    ) -> Option<Vec<&'a String>> {
+    ) -> Result<Option<Vec<&'a String>>> {
         let package_dependencies: &Vec<String>;
         let mut unique_dependencies_found = false;
 
@@ -173,7 +183,7 @@ pub mod commandline_functions {
         {
             package_dependencies = &packages.get(index).unwrap().dependencies; // unwrap will never panic as it is guaranteed by the if statement
         } else {
-            return None;
+            return Err(anyhow!(PackagesRetrievalError::NotFound(package_name.to_owned())));
         };
 
         let mut packages_dependencies_copy: Vec<&String> = package_dependencies.iter().collect();
@@ -195,10 +205,10 @@ pub mod commandline_functions {
         }
 
         if unique_dependencies_found && !packages_dependencies_copy.is_empty() {
-            return Some(packages_dependencies_copy);
+            return Ok(Some(packages_dependencies_copy));
         }
 
-        None
+        Ok(None)
     }
 }
 
@@ -277,7 +287,7 @@ linux-firmware: firmware images needed for some devices
         let packages = get_packages();
 
         let sample = ["bottle".to_owned(), "spoon".to_owned()];
-        let result = get_unique_dependencies("a", &packages).unwrap();
+        let result = get_unique_dependencies("a", &packages).unwrap().unwrap();
 
         let sample_set: HashSet<_> = sample.iter().collect();
         let mut result_set: HashSet<&String> = HashSet::new();
@@ -301,7 +311,7 @@ linux-firmware: firmware images needed for some devices
         packages_with_same_deps.insert("c");
 
         assert_eq!(
-            get_packages_with_same_dependencies("a", &get_packages()),
+            get_packages_with_same_dependencies("a", &get_packages()).unwrap(),
             Some(packages_with_same_deps)
         )
     }

@@ -14,7 +14,7 @@ fn main() -> Result<()> {
 
     match args.command {
         Commands::GetUniqueDeps(unique_deps) => {
-            if let Some(unique_deps) = get_unique_dependencies(&unique_deps.package, &packages) {
+            if let Some(unique_deps) = get_unique_dependencies(&unique_deps.package, &packages)? {
                 for dep in unique_deps {
                     println!("{}", dep)
                 }
@@ -25,7 +25,7 @@ fn main() -> Result<()> {
         }
         Commands::GetPacsWithSameDeps(pacs_with_same_deps) => {
             if let Some(packages) =
-                get_packages_with_same_dependencies(&pacs_with_same_deps.package, &packages)
+                get_packages_with_same_dependencies(&pacs_with_same_deps.package, &packages)?
             {
                 for package in packages {
                     println!("{}", package)
